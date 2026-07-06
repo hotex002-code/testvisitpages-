@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Night Journey — Сказка перед сном</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌙</text></svg>">
+    <style>
+        :root {
+            --bg-deep: #020212;
+            --bg-night: #06061a;
+            --purple: #7c3aed;
+            --purple-glow: #a855f7;
+            --pink: #ec4899;
+            --pink-glow: #f472b6;
+            --gold: #fbbf24;
+            --gold-soft: #fcd34d;
+            --text-soft: rgba(255, 255, 255, 0.9);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-hover: rgba(255, 255, 255, 0.08);
+            --radius-xl: 28px;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --transition-smooth: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-spring: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: var(--bg-deep);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                transition-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
+
+        /* ===== SPLASH SCREEN ===== */
+        #splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #020212;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease-out, visibility 0.8s;
+            pointer-events: all;
+        }
+        #splash.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .splash-moon {
+            font-size: 80px;
+            animation: splashPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes splashPulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+
+        /* ===== PROGRESS BAR ===== */
+        .progress-container {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+            z-index: 100;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #a855f7, #f472b6);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        /* ===== BACKGROUND CANVAS ===== */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ===== MAIN APP CONTAINER ===== */
+        #app {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            padding-bottom: var(--safe-bottom);
+        }
+
+        /* ===== SCREEN CONTAINER ===== */
+        .screen {
+            position: absolute;
+            width: 100%;
+            max-width: 440px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px) scale(0.96);
+            transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+            padding: 20px;
+            will-change: opacity, transform;
+        }
+        .screen.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: translateY(0) scale(1);
+        }
+        .screen.exit-left {
+            opacity: 0;
+            transform: translateX(-40px) scale(0.94);
+            transition: opacity 0.35s ease-in, transform 0.35s ease-in;
+        }
+        .screen.exit-right {
+            opacity: 0;
+            transform: translateX(40px) scale(0.94);
+            transition: opacity 0.35s ease-in, transform 0.35s ease-in;
+        }
+
+        /* ===== GLASS CARD ===== */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 32px 24px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+            text-align: center;
+            width: 100%;
+            transition: all var(--transition-smooth);
+        }
+        .glass-card:hover {
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                0 0 60px rgba(124, 58, 237, 0.1);
+        }
+
+        /* ===== TYPOGRAPHY ===== */
+        h1 {
+            font-size: clamp(28px, 6vw, 40px);
+            font-weight: 700;
+            color: var(--text-soft);
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        h2 {
+            font-size: clamp(20px, 4.5vw, 28px);
+            font-weight: 600;
+            color: var(--text-soft);
+            letter-spacing: -0.01em;
+        }
+        .subtitle {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            font-weight: 400;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all var(--transition-bounce);
+            min-height: 50px;
+            min-width: 44px;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            white-space: nowrap;
+            background: transparent;
+            color: inherit;
+        }
+        .btn:focus-visible {
+            outline: 2px solid var(--purple-glow);
+            outline-offset: 3px;
+        }
+        .btn:active {
+            transform: scale(0.94);
+            transition: transform 0.1s ease-out;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 28px rgba(124, 58, 237, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-soft);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .btn-icon {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 22px;
+        }
+
+        /* Ripple */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.35);
+            transform: scale(0);
+            animation: ripple-anim 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes ripple-anim {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* ===== MOOD GRID ===== */
+        .mood-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+        }
+        .mood-btn {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 20px 14px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-soft);
+            cursor: pointer;
+            transition: all var(--transition-bounce);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-height: 80px;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .mood-btn .emoji {
+            font-size: 32px;
+            transition: transform var(--transition-bounce);
+        }
+        .mood-btn:hover {
+            background: var(--glass-hover);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+        .mood-btn:hover .emoji {
+            transform: scale(1.2);
+        }
+        .mood-btn:active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease-out;
+        }
+
+        /* ===== STAR WORLD ===== */
+        .star-field-container {
+            position: relative;
+            width: 100%;
+            height: 380px;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+        }
+        .clickable-star {
+            position: absolute;
+            font-size: 28px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: starFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+            z-index: 5;
+        }
+        .clickable-star:hover {
+            transform: scale(1.6);
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1));
+        }
+        .clickable-star.collected {
+            animation: starBurst 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes starFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes starBurst {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2.5); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        /* ===== HEART GAME ===== */
+        .heart-game-area {
+            position: relative;
+            width: 100%;
+            height: 420px;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.25);
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        .falling-heart {
+            position: absolute;
+            font-size: 30px;
+            cursor: pointer;
+            pointer-events: all;
+            transition: transform 0.1s ease;
+            animation: heartWiggle 0.8s ease-in-out infinite;
+            filter: drop-shadow(0 0 6px rgba(255, 100, 150, 0.7));
+            z-index: 10;
+        }
+        .falling-heart:active {
+            transform: scale(1.8);
+            filter: drop-shadow(0 0 20px rgba(255, 150, 200, 1));
+        }
+        @keyframes heartWiggle {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+        .heart-burst {
+            position: absolute;
+            pointer-events: none;
+            font-size: 20px;
+            animation: heartPop 0.5s ease-out forwards;
+            z-index: 15;
+        }
+        @keyframes heartPop {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3) translateY(-40px); opacity: 0; }
+        }
+        .heart-counter {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--pink-glow);
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* ===== WHEEL ===== */
+        .wheel-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+        }
+        .wheel-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 30px rgba(124, 58, 237, 0.5));
+        }
+        .wheel-pointer {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 36px;
+            z-index: 5;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+        }
+
+        /* ===== POSTCARD ===== */
+        .postcard {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-xl);
+            padding: 36px 28px;
+            text-align: center;
+            box-shadow: 0 16px 60px rgba(0, 0, 0, 0.5);
+            animation: postcardReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            position: relative;
+            overflow: hidden;
+        }
+        .postcard::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+            animation: shimmer 4s ease-in-out infinite;
+        }
+        @keyframes postcardReveal {
+            0% { transform: rotateY(90deg) scale(0.8); opacity: 0; }
+            100% { transform: rotateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes shimmer {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(5%, 5%); }
+        }
+        .postcard-text {
+            position: relative;
+            z-index: 1;
+            font-size: 18px;
+            line-height: 1.7;
+            color: var(--text-soft);
+        }
+
+        /* ===== QUEST STARS ===== */
+        .quest-area {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            border-radius: var(--radius-xl);
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+        }
+        .hidden-quest-star {
+            position: absolute;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.7));
+            opacity: 0;
+            animation: questReveal 3s ease-in-out infinite alternate;
+        }
+        .hidden-quest-star.visible {
+            opacity: 1;
+        }
+        .hidden-quest-star:hover {
+            transform: scale(1.5);
+            filter: drop-shadow(0 0 24px rgba(255, 215, 0, 1));
+        }
+        .hidden-quest-star.found {
+            animation: questFound 0.5s ease-out forwards;
+            pointer-events: none;
+            opacity: 1;
+        }
+        @keyframes questReveal {
+            0% { opacity: 0; }
+            100% { opacity: 0.8; }
+        }
+        @keyframes questFound {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        /* ===== MAGIC BUTTON AREA ===== */
+        .magic-phrase {
+            font-size: 20px;
+            color: var(--text-soft);
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s ease;
+            animation: phraseAppear 0.5s ease-out;
+        }
+        @keyframes phraseAppear {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== FINAL SCENE ===== */
+        .final-moon {
+            font-size: 100px;
+            animation: moonPulse 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 60px rgba(255, 215, 0, 0.5));
+        }
+        @keyframes moonPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 60px rgba(255, 215, 0, 0.5)); }
+            50% { transform: scale(1.08); filter: drop-shadow(0 0 80px rgba(255, 215, 0, 0.7)); }
+        }
+        .final-dim-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 2s ease-in-out;
+            z-index: 50;
+        }
+        .final-dim-overlay.active {
+            opacity: 0.85;
+        }
+
+        /* ===== MUSIC TOGGLE ===== */
+        .music-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-bounce);
+            color: var(--text-soft);
+        }
+        .music-toggle:focus-visible {
+            outline: 2px solid var(--purple-glow);
+            outline-offset: 2px;
+        }
+        .music-toggle:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .music-toggle:active {
+            transform: scale(0.9);
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            background: rgba(20, 10, 40, 0.92);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-lg);
+            padding: 20px 28px;
+            z-index: 200;
+            text-align: center;
+            color: var(--text-soft);
+            font-size: 18px;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            max-width: 85vw;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .toast .toast-emoji {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* ===== CONFETTI CANVAS ===== */
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 150;
+            pointer-events: none;
+        }
+
+        @media (max-width: 380px) {
+            .screen { padding: 12px; gap: 14px; }
+            .glass-card { padding: 20px 16px; }
+            .mood-grid { gap: 8px; }
+            .mood-btn { padding: 14px 10px; font-size: 14px; }
+            .mood-btn .emoji { font-size: 26px; }
+            h1 { font-size: 24px; }
+            .heart-game-area { height: 320px; }
+            .star-field-container { height: 300px; }
+            .wheel-container { width: 220px; height: 220px; }
+            .quest-area { height: 280px; }
+        }
+        @media (min-width: 768px) {
+            .screen { max-width: 480px; }
+            .heart-game-area { height: 480px; }
+            .star-field-container { height: 420px; }
+            .quest-area { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="splash"><span class="splash-moon">🌙</span></div>
+    <div class="progress-container"><div class="progress-fill" id="progressFill"></div></div>
+    <canvas id="bgCanvas"></canvas>
+    <canvas id="confettiCanvas"></canvas>
+    <button class="music-toggle" id="musicToggle" aria-label="Включить музыку" title="Музыка">🔇</button>
+    <div class="toast" id="toast"><span class="toast-emoji"></span><span class="toast-text"></span></div>
+    <div class="final-dim-overlay" id="finalDimOverlay"></div>
+    <div id="app" role="main">
+        <section class="screen active" id="screen-intro" data-screen="intro" aria-label="Вступление">
+            <div class="glass-card">
+                <div style="font-size:64px;margin-bottom:8px;">🌙</div>
+                <h1>Доброй ночи</h1>
+                <p class="subtitle">Это маленькое путешествие перед сном</p>
+                <button class="btn btn-primary" data-action="go-mood">✨ Начать</button>
+            </div>
+        </section>
+        <section class="screen" id="screen-mood" data-screen="mood" aria-label="Выбор настроения">
+            <div class="glass-card">
+                <h2>Какое сейчас настроение?</h2>
+                <div class="mood-grid" style="margin-top:16px;">
+                    <button class="mood-btn" data-mood="happy"><span class="emoji">😊</span>Весёлое</button>
+                    <button class="mood-btn" data-mood="dreamy"><span class="emoji">✨</span>Мечтательное</button>
+                    <button class="mood-btn" data-mood="sleepy"><span class="emoji">😴</span>Сонное</button>
+                    <button class="mood-btn" data-mood="sad"><span class="emoji">🥺</span>Немного грустное</button>
+                </div>
+            </div>
+        </section>
+        <section class="screen" id="screen-stars" data-screen="stars" aria-label="Зажги звёзды">
+            <div class="glass-card" style="padding:20px;">
+                <h2>⭐ Зажги звёзды</h2>
+                <p class="subtitle">Нажми на звёздочки — они подарят тебе пожелание</p>
+                <div class="star-field-container" id="starField"></div>
+                <p class="subtitle" id="starCounter" style="margin-top:4px;">Открыто: 0 / 3</p>
+                <button class="btn btn-primary" id="btnContinueStars" style="display:none;" data-action="go-hearts">Продолжить ✨</button>
+            </div>
+        </section>
+        <section class="screen" id="screen-hearts" data-screen="hearts-game" aria-label="Собери сердечки">
+            <div class="glass-card" style="padding:20px;">
+                <h2>💖 Собери сердечки</h2>
+                <p class="subtitle">Поймай 15 сердечек!</p>
+                <div class="heart-game-area" id="heartGameArea">
+                    <div class="heart-counter" id="heartCounter">💖 0 / 15</div>
+                </div>
+                <button class="btn btn-primary" id="btnContinueHearts" style="display:none;" data-action="go-wheel">Дальше 🎡</button>
+            </div>
+        </section>
+        <section class="screen" id="screen-wheel" data-screen="wheel" aria-label="Колесо желаний">
+            <div class="glass-card">
+                <h2>🎡 Колесо желаний</h2>
+                <p class="subtitle">Раскрути колесо и узнай, что тебя ждёт</p>
+                <div class="wheel-container" style="margin:16px auto;">
+                    <div class="wheel-pointer">▼</div>
+                    <svg class="wheel-svg" id="wheelSvg" viewBox="0 0 200 200">
+                        <defs><filter id="glow"><feGaussianBlur stdDeviation="1.5"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                        <circle cx="100" cy="100" r="98" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+                        <path d="M100,100 L100,5 A95,95 0 0,1 190,55 Z" fill="rgba(255,120,150,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                        <path d="M100,100 L190,55 A95,95 0 0,1 170,185 Z" fill="rgba(160,130,255,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                        <path d="M100,100 L170,185 A95,95 0 0,1 30,185 Z" fill="rgba(255,200,100,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                        <path d="M100,100 L30,185 A95,95 0 0,1 10,55 Z" fill="rgba(120,220,200,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                        <path d="M100,100 L10,55 A95,95 0 0,1 100,5 Z" fill="rgba(255,180,220,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                        <circle cx="100" cy="100" r="20" fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+                        <text x="140" y="65" fill="white" font-size="12" font-weight="600" text-anchor="middle" filter="url(#glow)">❤️</text>
+                        <text x="155" y="150" fill="white" font-size="12" font-weight="600" text-anchor="middle" filter="url(#glow)">🌙</text>
+                        <text x="70" y="175" fill="white" font-size="12" font-weight="600" text-anchor="middle" filter="url(#glow)">✨</text>
+                        <text x="25" y="120" fill="white" font-size="12" font-weight="600" text-anchor="middle" filter="url(#glow)">😊</text>
+                        <text x="60" y="50" fill="white" font-size="12" font-weight="600" text-anchor="middle" filter="url(#glow)">💌</text>
+                    </svg>
+                </div>
+                <button class="btn btn-primary" id="btnSpinWheel" data-action="spin-wheel">🎡 Крутить</button>
+                <button class="btn btn-secondary" id="btnContinueWheel" style="display:none;" data-action="go-postcard">Дальше 💌</button>
+            </div>
+        </section>
+        <section class="screen" id="screen-postcard" data-screen="postcard" aria-label="Открытка">
+            <div class="postcard">
+                <div class="postcard-text">
+                    <p style="font-size:28px;margin-bottom:12px;">💌</p>
+                    <p>Какой бы ни был день —</p><p>пусть ночь принесёт тебе</p>
+                    <p><strong>спокойствие,</strong></p><p><strong>уют,</strong></p>
+                    <p>и самые добрые сны.</p>
+                    <p style="margin-top:16px;font-size:22px;">Спокойной ночи ❤️</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" data-action="go-quest" style="margin-top:8px;">🔍 Искать звёзды</button>
+        </section>
+        <section class="screen" id="screen-quest" data-screen="quest" aria-label="Поиск звёзд">
+            <div class="glass-card" style="padding:20px;">
+                <h2>🔍 Найди 5 спрятанных звёзд</h2>
+                <p class="subtitle">Прикоснись к экрану — они проявятся</p>
+                <div class="quest-area" id="questArea"></div>
+                <p class="subtitle" id="questCounter">Найдено: 0 / 5</p>
+                <button class="btn btn-primary" id="btnContinueQuest" style="display:none;" data-action="go-magic">Дальше ✨</button>
+            </div>
+        </section>
+        <section class="screen" id="screen-magic" data-screen="magic-button" aria-label="Волшебная кнопка">
+            <div class="glass-card">
+                <h2>✨ Волшебная кнопка</h2>
+                <p class="subtitle">Нажимай — и получай тёплые слова</p>
+                <div class="magic-phrase" id="magicPhrase">✨</div>
+                <button class="btn btn-primary" id="btnMagic" data-action="magic-press" style="font-size:22px;padding:18px 40px;">✨ Нажми меня</button>
+                <p class="subtitle" id="magicCounter" style="font-size:13px;">Нажатий: 0</p>
+                <button class="btn btn-secondary" id="btnContinueMagic" style="display:none;" data-action="go-final">К финалу 🌙</button>
+            </div>
+        </section>
+        <section class="screen" id="screen-final" data-screen="final" aria-label="Финал">
+            <div class="glass-card">
+                <div class="final-moon">🌙</div>
+                <h1>Спокойной ночи</h1>
+                <p class="subtitle">Пусть тебе приснятся самые добрые сны</p>
+                <p style="font-size:40px;margin-top:12px;">✨💖🌙</p>
+                <button class="btn btn-secondary" id="btnRestart" data-action="restart" style="margin-top:16px;">🔄 Ещё одно путешествие?</button>
+                <button class="btn btn-secondary" id="btnShare" data-action="share" style="margin-top:8px;">💌 Поделиться теплом</button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== CONFIG ====================
+            const CONFIG = {
+                starWishes: [
+                    'Пусть сегодня тебе приснится тёплое море 🌊', 'Ты — свет, который делает мир ярче ✨',
+                    'Завтра будет чудесный день, вот увидишь ☀️', 'Твоя улыбка — как звезда в ночи 💫',
+                    'Ты заслуживаешь самого сладкого сна 🍯', 'Пусть ангелы хранят твой покой 🌙',
+                    'Всё, о чём ты мечтаешь, уже в пути 🛤️', 'Ты — самое доброе, что есть в этом мире ❤️',
+                    'Ночь обнимет тебя мягким одеялом тишины 🌌', 'Каждая звёздочка светит для тебя 🌟',
+                    'Ты делаешь мир лучше просто тем, что ты есть 💖', 'Пусть сон будет глубоким и спокойным 🕊️',
+                    'У тебя всё получится, просто верь 🌈', 'Сладких снов, маленькое чудо 🧸',
+                    'Твоё сердце полно тепла и света 🔥', 'Завтрашний день принесёт радость 🎁',
+                    'Ты сильнее, чем думаешь 💪✨', 'Пусть луна поёт тебе колыбельную 🎵',
+                    'В твоих глазах — целая вселенная 🌠', 'Отдыхай, ты это заслужила 🌸',
+                    'Тишина ночи — твой лучший друг сейчас 🤫', 'Пусть согреют воспоминания о хорошем 🧣',
+                    'Ты прекрасна, и ночь это знает 🌹', 'Каждый закат обещает новый рассвет 🌅',
+                    'Спи сладко, моя звёздочка ⭐', 'Твоя душа — как бархатная ночь 💜',
+                    'Пусть приснится сад с волшебными цветами 🌺', 'Ты в безопасности, всё хорошо 🏡',
+                    'Ночь шепчет тебе: "Ты любима" 💗', 'Пусть завтра будет полон улыбок 😊',
+                    'Ты — подарок для этого мира 🎀', 'Сон — это путешествие в страну чудес 🚂',
+                ],
+                magicPhrases: [
+                    'Ты прекрасна ✨','Всё будет хорошо 🌙','Ты — свет 💫','Обнимаю тебя мысленно 🤗',
+                    'Ты заслуживаешь счастья 💖','Пусть тревоги растворятся 🌊','Ты сильнее всех бурь 💪',
+                    'Сладких снов, родная 🧸','Ты делаешь мир лучше 🌍','Твоя улыбка бесценна 😊',
+                    'Ночь обнимет тебя 🌌','Ты — чудо 🌟','Пусть сердце будет спокойно 💜',
+                    'Ты любима 💗','Всё наладится 🌈','Ты — моя звёздочка ⭐','Дыши глубже, всё хорошо 🌬️',
+                    'Ты в безопасности 🏡','Пусть приснится волшебство 🦄','Ты достойна самого лучшего 👑',
+                    'Завтра — новый прекрасный день ☀️','Твоя душа прекрасна 🌸',
+                    'Ты не одна, с тобой весь мир 🌍','Отпусти все заботы 🍃','Ты — как тёплый луч 🌤️',
+                    'Спи, моя хорошая 😴','Всё именно так, как нужно 💫','Ты несёшь свет ✨',
+                    'Пусть сон будет мягким ☁️','Ты бесценна 💎','Обнимаю крепко-крепко 🫂',
+                    'Ты справляешься со всем 🌟','Ночь принесёт покой 🌙','Твои мечты сбудутся 🌠',
+                    'Ты — главный герой своей сказки 📖','Пусть утро будет добрым 🌅',
+                    'Твоё сердце большое и тёплое ❤️','Отдыхай, ты заслужила 🛌','Ты удивительная 💖',
+                    'Пусть мысли будут лёгкими 🪶','Ты — частичка космоса 🌌','Счастье уже рядом 🍀',
+                    'Твоя энергия — волшебство 🔮','Ты дороже всех сокровищ 💰✨',
+                    'Пусть ночь будет тихой и нежной 🌙','Ты в гармонии с миром 🕊️',
+                    'Каждый день — подарок, и ты тоже 🎁','Ты светишься изнутри 💡',
+                    'Спи сладко, как котёнок 🐱','Ты прекрасна в каждый момент 🌹',
+                    'Пусть приснится шоколадная река 🍫','Твоя доброта возвращается к тебе 💝',
+                    'Ты — сама нежность 🌷','Ночь хранит твои секреты 🤫','Ты достойна отдыха 🧖‍♀️',
+                    'Всё тревожное уходит прочь 🍂','Ты — бриллиант 💎','Сладких облачных снов ☁️💤',
+                    'Ты неповторима 🦋','Пусть луна хранит тебя 🌖','Твои глаза сияют ярче звёзд 👀✨',
+                    'Ты в потоке добра 🌊💙','Обнимаю твоё сердечко 💞','Ты — причина чьей-то улыбки 😊',
+                    'Всё, что нужно, уже внутри тебя 🧘','Пусть ночь исцелит усталость 🩹',
+                    'Ты — как тёплый плед в холодный вечер 🧣','Твоя душа — сад 🌻',
+                    'Ты заслуживаешь покоя 🕯️','Спи, и пусть снятся чудеса 🎠','Ты любима больше, чем знаешь 💕',
+                    'Твоё присутствие — подарок 🎀','Пусть звёзды танцуют для тебя 💃✨',
+                    'Ты — волшебство в реальной жизни 🪄','Ночь говорит тебе: "Тссс, всё хорошо" 🤫💜',
+                    'Твоё сердце знает путь 💓','Ты — самое тёплое воспоминание этого дня 🌇',
+                    'Пусть каждая клеточка расслабится 🧘‍♀️','Ты бесконечно ценна ♾️💖',
+                    'Облака уже готовят тебе мягкую постель ☁️🛏️','Ты — луч света в темноте 🔦',
+                    'Пусть мысли текут как река 🌊','Ты — воплощение грации 🦢','Твоя улыбка лечит мир 🌍😊',
+                    'Спи, пусть время остановится ⏳💤','Ты достойна всех чудес 🎇',
+                    'Пусть нежные сны окутают тебя 🕸️💙','Ты — радость, которую мир ждал 🎉',
+                    'Твоё имя написано на звёздах ✍️⭐','Ты — уютный огонёк в ночи 🔥',
+                    'Всё проходит, и тревоги тоже 🌊⏳','Ты — самая добрая душа 💛',
+                    'Пусть приснится полёт над облаками ✈️☁️','Ты защищена от всего плохого 🛡️',
+                    'Твои мысли — как лепестки роз 🌹','Сладкой, сладкой ночи 🍯🌙',
+                    'Ты — как глоток свежего воздуха 🌬️💚','Твоё сердце бьётся в ритме вселенной 🥁🌌',
+                    'Пусть завтра будет на 1% счастливее 📈😊','Ты — жемчужина океана 🦪💎',
+                    'Обнимаю тебя через километры 🌍🤗','Ты непобедима в своей нежности 🦸‍♀️💐',
+                    'Пусть все желания исполнятся 🧞‍♂️✨','Ты — причина, по которой звёзды светят 🌟',
+                    'Спи, как младенец 👶💤','Ты — чистая магия 🔮','Пусть утро встретит тебя солнцем ☀️😊',
+                    'Ты — моё вдохновение 🎨💡','Твоя доброта меняет мир 🌍💝',
+                    'Сладких пушистых снов 🐑💤','Ты — светлячок в ночном лесу 🧚✨',
+                    'Пусть душа поёт колыбельную 🎶','Ты — самая красивая мелодия 🎵💖',
+                    'Всё задуманное сбудется 🌠🙏','Ты — тихая гавань после шторма ⚓💙',
+                    'Спи, звёздочка моя 🌟😴','Ты — олицетворение заботы 🤲💗',
+                    'Пусть сны будут цветными 🌈💤','Ты — драгоценный камень в короне ночи 👑💎',
+                ]
+            };
+
+            // ==================== STATE MANAGER ====================
+            const StateManager = {
+                current: 'intro',
+                previous: null,
+                data: {
+                    mood: null,
+                    starsOpened: 0,
+                    heartsCollected: 0,
+                    wheelResult: null,
+                    questFound: 0,
+                    magicPresses: 0,
+                    musicOn: false,
+                },
+                transitionQueue: [],
+                isTransitioning: false,
+                validTransitions: {
+                    intro: ['mood'],
+                    mood: ['stars'],
+                    stars: ['hearts-game'],
+                    'hearts-game': ['wheel'],
+                    wheel: ['postcard'],
+                    postcard: ['quest'],
+                    quest: ['magic-button'],
+                    'magic-button': ['final'],
+                    final: ['intro'],
+                },
+
+                goTo(newState, direction = 'forward') {
+                    if (this.isTransitioning && this.transitionQueue.length > 0) return;
+                    const allowed = this.validTransitions[this.current] || [];
+                    if (!allowed.includes(newState) && newState !== 'intro' && this.current !== 'intro') return;
+                    if (newState === this.current) return;
+
+                    this.isTransitioning = true;
+                    this.previous = this.current;
+                    const oldScreen = document.querySelector(`[data-screen="${this.current}"]`);
+                    const newScreen = document.querySelector(`[data-screen="${newState}"]`);
+
+                    if (oldScreen) {
+                        oldScreen.classList.remove('active');
+                        oldScreen.classList.add(direction === 'forward' ? 'exit-left' : 'exit-right');
+                        setTimeout(() => oldScreen.classList.remove('exit-left', 'exit-right'), 400);
+                    }
+                    if (newScreen) {
+                        setTimeout(() => {
+                            newScreen.classList.add('active');
+                            this.current = newState;
+                            this.isTransitioning = false;
+                            this.onEnter(newState);
+                            this.updateProgress();
+                            if (this.transitionQueue.length > 0) {
+                                const next = this.transitionQueue.shift();
+                                this.goTo(next.state, next.direction);
+                            }
+                        }, 200);
+                    } else {
+                        this.current = newState;
+                        this.isTransitioning = false;
+                        this.onEnter(newState);
+                        this.updateProgress();
+                    }
+                },
+
+                onEnter(state) {
+                    switch (state) {
+                        case 'stars': UIRenderer.initStarField(); break;
+                        case 'hearts-game': GameLogic.startHeartGame(); break;
+                        case 'wheel': UIRenderer.resetWheel(); break;
+                        case 'quest': UIRenderer.initQuest(); break;
+                        case 'magic-button': UIRenderer.resetMagicButton(); break;
+                        case 'final':
+                            AnimationController.triggerFinalEffects();
+                            SoundEngine.playFinal();
+                            document.getElementById('finalDimOverlay').classList.remove('active');
+                            break;
+                        case 'intro':
+                            this.resetAllData();
+                            UIRenderer.updateProgress();
+                            break;
+                    }
+                },
+
+                resetAllData() {
+                    this.data = {
+                        mood: null,
+                        starsOpened: 0,
+                        heartsCollected: 0,
+                        wheelResult: null,
+                        questFound: 0,
+                        magicPresses: 0,
+                        musicOn: this.data.musicOn,
+                    };
+                },
+
+                updateProgress() {
+                    const states = ['intro','mood','stars','hearts-game','wheel','postcard','quest','magic-button','final'];
+                    const idx = states.indexOf(this.current);
+                    const progress = idx >= 0 ? ((idx + 1) / states.length) * 100 : 0;
+                    document.getElementById('progressFill').style.width = progress + '%';
+                }
+            };
+
+            // ==================== SOUND ENGINE ====================
+            const SoundEngine = {
+                ctx: null,
+                initialized: false,
+                lullabyNodes: [],
+
+                init() {
+                    try {
+                        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        this.initialized = true;
+                    } catch (e) { this.initialized = false; }
+                },
+
+                startLullaby() {
+                    if (!this.initialized || !StateManager.data.musicOn) return;
+                    this.stopLullaby();
+                    const now = this.ctx.currentTime;
+                    const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 349.23, 329.63, 293.66];
+                    const gainNode = this.ctx.createGain();
+                    gainNode.gain.setValueAtTime(0.04, now);
+                    gainNode.connect(this.ctx.destination);
+                    this.lullabyNodes.push(gainNode);
+
+                    notes.forEach((freq, i) => {
+                        const osc = this.ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+                        const noteGain = this.ctx.createGain();
+                        noteGain.gain.setValueAtTime(0, now + i * 1.2);
+                        noteGain.gain.linearRampToValueAtTime(0.06, now + i * 1.2 + 0.4);
+                        noteGain.gain.linearRampToValueAtTime(0, now + i * 1.2 + 1.0);
+                        osc.connect(noteGain);
+                        noteGain.connect(gainNode);
+                        osc.start(now + i * 1.2);
+                        osc.stop(now + i * 1.2 + 1.2);
+                        this.lullabyNodes.push(osc, noteGain);
+                    });
+                },
+
+                stopLullaby() {
+                    this.lullabyNodes.forEach(n => { try { n.stop?.(); } catch(e){} });
+                    this.lullabyNodes = [];
+                },
+
+                play(type) {
+                    if (!this.initialized || !StateManager.data.musicOn) return;
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    const now = this.ctx.currentTime;
+                    const gain = this.ctx.createGain();
+                    gain.connect(this.ctx.destination);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    switch (type) {
+                        case 'click': this._tone(now, gain, 880, 0.1, 'sine'); break;
+                        case 'star': this._tone(now, gain, 1200, 0.25, 'sine'); this._tone(now+0.08, gain, 1600, 0.2, 'sine'); break;
+                        case 'success': this._tone(now, gain, 523, 0.15, 'sine'); this._tone(now+0.1, gain, 659, 0.15, 'sine'); this._tone(now+0.2, gain, 784, 0.3, 'sine'); break;
+                        case 'heart': this._tone(now, gain, 600, 0.12, 'triangle'); this._tone(now+0.06, gain, 800, 0.15, 'triangle'); break;
+                        case 'wheel-tick': this._tone(now, gain, 300, 0.04, 'square'); break;
+                        case 'wheel-result': this._tone(now, gain, 400, 0.2, 'sine'); this._tone(now+0.15, gain, 600, 0.2, 'sine'); this._tone(now+0.3, gain, 900, 0.4, 'sine'); break;
+                        case 'final': this._tone(now, gain, 392, 0.5, 'sine'); this._tone(now+0.4, gain, 523, 0.5, 'sine'); this._tone(now+0.8, gain, 659, 0.8, 'sine'); this._tone(now+1.2, gain, 784, 1.2, 'sine'); break;
+                        case 'magic': this._tone(now, gain, 1000+Math.random()*600, 0.2, 'sine'); break;
+                        case 'quest-found': this._tone(now, gain, 1400, 0.3, 'sine'); this._tone(now+0.12, gain, 1800, 0.25, 'sine'); break;
+                    }
+                },
+                _tone(now, gainNode, freq, dur, type) {
+                    const osc = this.ctx.createOscillator();
+                    osc.type = type; osc.frequency.setValueAtTime(freq, now);
+                    osc.connect(gainNode); osc.start(now); osc.stop(now+dur);
+                }
+            };
+
+            // ==================== UI RENDERER ====================
+            const UIRenderer = {
+                initStarField() {
+                    const container = document.getElementById('starField');
+                    if (!container) return;
+                    container.innerHTML = '';
+                    StateManager.data.starsOpened = 0;
+                    document.getElementById('starCounter').textContent = 'Открыто: 0 / 3';
+                    document.getElementById('btnContinueStars').style.display = 'none';
+                    for (let i=0; i<10; i++) {
+                        const x = 8+Math.random()*84, y = 8+Math.random()*84;
+                        const star = document.createElement('span');
+                        star.className = 'clickable-star';
+                        star.textContent = '⭐';
+                        star.style.left = x+'%'; star.style.top = y+'%';
+                        star.style.animationDelay = Math.random()*3+'s';
+                        star.addEventListener('click', (e) => this._onStarClick(e, star));
+                        container.appendChild(star);
+                    }
+                },
+                _onStarClick(e, starEl) {
+                    if (starEl.classList.contains('collected')) return;
+                    starEl.classList.add('collected');
+                    SoundEngine.play('star');
+                    StateManager.data.starsOpened++;
+                    document.getElementById('starCounter').textContent = `Открыто: ${StateManager.data.starsOpened} / 3`;
+                    const wish = CONFIG.starWishes[Math.floor(Math.random()*CONFIG.starWishes.length)];
+                    this._showToast('⭐', wish);
+                    const rect = starEl.getBoundingClientRect();
+                    AnimationController.spawnBurst(rect.left+rect.width/2, rect.top+rect.height/2, '#fbbf24', 12);
+                    if (StateManager.data.starsOpened >= 3) {
+                        document.getElementById('btnContinueStars').style.display = 'inline-flex';
+                        SoundEngine.play('success');
+                        AnimationController.spawnConfetti();
+                    }
+                },
+                _showToast(emoji, text) {
+                    const toast = document.getElementById('toast');
+                    toast.querySelector('.toast-emoji').textContent = emoji;
+                    toast.querySelector('.toast-text').textContent = text;
+                    toast.classList.add('show');
+                    clearTimeout(this._toastTimeout);
+                    this._toastTimeout = setTimeout(() => toast.classList.remove('show'), 2200);
+                },
+                resetWheel() {
+                    const wheel = document.getElementById('wheelSvg');
+                    wheel.style.transition = 'none';
+                    wheel.style.transform = 'rotate(0deg)';
+                    document.getElementById('btnSpinWheel').style.display = 'inline-flex';
+                    document.getElementById('btnContinueWheel').style.display = 'none';
+                },
+                initQuest() {
+                    const area = document.getElementById('questArea');
+                    area.innerHTML = '';
+                    StateManager.data.questFound = 0;
+                    document.getElementById('questCounter').textContent = 'Найдено: 0 / 5';
+                    document.getElementById('btnContinueQuest').style.display = 'none';
+                    this.questStars = [];
+                    for (let i=0; i<5; i++) {
+                        const x = 5+Math.random()*80, y = 8+Math.random()*78;
+                        const star = document.createElement('span');
+                        star.className = 'hidden-quest-star';
+                        star.textContent = '⭐';
+                        star.style.left = x+'%'; star.style.top = y+'%';
+                        star.addEventListener('click', (e) => this._onQuestStarClick(e, star));
+                        area.appendChild(star);
+                        this.questStars.push({el: star, x, y});
+                    }
+                    area.addEventListener('touchmove', (e) => this._handleQuestTouch(e));
+                    area.addEventListener('mousemove', (e) => this._handleQuestTouch(e));
+                },
+                _handleQuestTouch(e) {
+                    if (StateManager.current !== 'quest') return;
+                    const area = document.getElementById('questArea');
+                    const rect = area.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    const relX = (clientX - rect.left) / rect.width * 100;
+                    const relY = (clientY - rect.top) / rect.height * 100;
+                    const revealRadius = 14;
+                    this.questStars.forEach(s => {
+                        const dist = Math.hypot(s.x - relX, s.y - relY);
+                        if (dist < revealRadius) s.el.classList.add('visible');
+                    });
+                },
+                _onQuestStarClick(e, starEl) {
+                    if (starEl.classList.contains('found')) return;
+                    starEl.classList.add('found');
+                    SoundEngine.play('quest-found');
+                    StateManager.data.questFound++;
+                    document.getElementById('questCounter').textContent = `Найдено: ${StateManager.data.questFound} / 5`;
+                    const rect = starEl.getBoundingClientRect();
+                    AnimationController.spawnBurst(rect.left+rect.width/2, rect.top+rect.height/2, '#fcd34d', 16);
+                    if (StateManager.data.questFound >= 5) {
+                        document.getElementById('btnContinueQuest').style.display = 'inline-flex';
+                        SoundEngine.play('success');
+                        AnimationController.spawnConfetti();
+                    }
+                },
+                resetMagicButton() {
+                    StateManager.data.magicPresses = 0;
+                    document.getElementById('magicPhrase').textContent = '✨';
+                    document.getElementById('magicCounter').textContent = 'Нажатий: 0';
+                    document.getElementById('btnContinueMagic').style.display = 'none';
+                },
+                showMagicPhrase() {
+                    const phrase = CONFIG.magicPhrases[Math.floor(Math.random()*CONFIG.magicPhrases.length)];
+                    const el = document.getElementById('magicPhrase');
+                    el.style.opacity = '0'; el.style.transform = 'translateY(10px)';
+                    setTimeout(() => {
+                        el.textContent = phrase;
+                        el.style.opacity = '1'; el.style.transform = 'translateY(0)';
+                    }, 150);
+                    StateManager.data.magicPresses++;
+                    document.getElementById('magicCounter').textContent = `Нажатий: ${StateManager.data.magicPresses}`;
+                    if (StateManager.data.magicPresses >= 5) document.getElementById('btnContinueMagic').style.display = 'inline-flex';
+                },
+                updateProgress() { StateManager.updateProgress(); }
+            };
+
+            // ==================== ANIMATION CONTROLLER ====================
+            const AnimationController = {
+                bgCanvas: null, bgCtx: null, confettiCanvas: null, confettiCtx: null,
+                stars: [], particles: [], shootingStars: [], confettiParticles: [],
+                mouseX: 0, mouseY: 0, animFrameId: null, confettiAnimId: null,
+                heartRainActive: false, heartRainParticles: [],
+                init() {
+                    this.bgCanvas = document.getElementById('bgCanvas');
+                    this.bgCtx = this.bgCanvas.getContext('2d');
+                    this.confettiCanvas = document.getElementById('confettiCanvas');
+                    this.confettiCtx = this.confettiCanvas.getContext('2d');
+                    this._resize();
+                    window.addEventListener('resize', () => this._resize());
+                    window.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; });
+                    window.addEventListener('touchmove', (e) => { this.mouseX = e.touches[0].clientX; this.mouseY = e.touches[0].clientY; }, {passive: true});
+                    for (let i=0; i<200; i++) this.stars.push({x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight, r:0.4+Math.random()*1.8, twinkleSpeed:0.003+Math.random()*0.015, twinkleOffset:Math.random()*Math.PI*2, baseAlpha:0.4+Math.random()*0.6});
+                    for (let i=0; i<30; i++) this.particles.push({x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight, r:1+Math.random()*2.5, vx:(Math.random()-0.5)*0.3, vy:-0.2-Math.random()*0.5, alpha:0.15+Math.random()*0.35, color:Math.random()<0.5?'#c4b5fd':'#fcd34d'});
+                    this._animate();
+                    this._animateConfetti();
+                },
+                _resize() { this.bgCanvas.width = window.innerWidth; this.bgCanvas.height = window.innerHeight; this.confettiCanvas.width = window.innerWidth; this.confettiCanvas.height = window.innerHeight; },
+                _animate() {
+                    this.bgCtx.clearRect(0,0,this.bgCanvas.width,this.bgCanvas.height);
+                    const grad = this.bgCtx.createRadialGradient(this.bgCanvas.width*0.5, this.bgCanvas.height*0.35, 50, this.bgCanvas.width*0.5, this.bgCanvas.height*0.5, this.bgCanvas.width*0.9);
+                    grad.addColorStop(0,'#0f0f30'); grad.addColorStop(0.5,'#0a0a20'); grad.addColorStop(1,'#020212');
+                    this.bgCtx.fillStyle = grad; this.bgCtx.fillRect(0,0,this.bgCanvas.width,this.bgCanvas.height);
+                    const px = (this.mouseX-this.bgCanvas.width/2)*0.015, py = (this.mouseY-this.bgCanvas.height/2)*0.015;
+                    const moonX = this.bgCanvas.width*0.78+px*0.5, moonY = this.bgCanvas.height*0.18+py*0.5;
+                    const moonR = Math.min(this.bgCanvas.width,this.bgCanvas.height)*0.09;
+                    const moonGlow = this.bgCtx.createRadialGradient(moonX,moonY,moonR*0.6,moonX,moonY,moonR*3.5);
+                    moonGlow.addColorStop(0,'rgba(255,220,180,0.4)'); moonGlow.addColorStop(0.5,'rgba(255,200,140,0.08)'); moonGlow.addColorStop(1,'rgba(255,180,100,0)');
+                    this.bgCtx.fillStyle = moonGlow; this.bgCtx.beginPath(); this.bgCtx.arc(moonX,moonY,moonR*3.5,0,Math.PI*2); this.bgCtx.fill();
+                    const moonBody = this.bgCtx.createRadialGradient(moonX-moonR*0.2,moonY-moonR*0.2,moonR*0.05,moonX,moonY,moonR);
+                    moonBody.addColorStop(0,'#fffef5'); moonBody.addColorStop(0.7,'#f5e6c8'); moonBody.addColorStop(1,'#d4b896');
+                    this.bgCtx.fillStyle = moonBody; this.bgCtx.beginPath(); this.bgCtx.arc(moonX,moonY,moonR,0,Math.PI*2); this.bgCtx.fill();
+                    this.stars.forEach(s => {
+                        const alpha = s.baseAlpha + Math.sin(Date.now()*s.twinkleSpeed+s.twinkleOffset)*0.35;
+                        this.bgCtx.fillStyle = `rgba(255,255,240,${Math.max(0.15,alpha)})`;
+                        this.bgCtx.beginPath(); this.bgCtx.arc(s.x+px*0.3, s.y+py*0.3, s.r, 0, Math.PI*2); this.bgCtx.fill();
+                    });
+                    this.particles.forEach(p => {
+                        p.x += p.vx; p.y += p.vy;
+                        if(p.y<-20)p.y=this.bgCanvas.height+20; if(p.y>this.bgCanvas.height+20)p.y=-20;
+                        this.bgCtx.fillStyle = p.color.replace(')',`,${p.alpha})`).replace('rgb','rgba');
+                        this.bgCtx.beginPath(); this.bgCtx.arc(p.x,p.y,p.r,0,Math.PI*2); this.bgCtx.fill();
+                    });
+                    if(Math.random()<0.004 && this.shootingStars.length<2) this.shootingStars.push({x:Math.random()*this.bgCanvas.width*0.8,y:Math.random()*this.bgCanvas.height*0.4,vx:4+Math.random()*7,vy:1.5+Math.random()*3,life:1,decay:0.015+Math.random()*0.03,len:40+Math.random()*60});
+                    this.shootingStars.forEach((ss,i)=>{ ss.x+=ss.vx; ss.y+=ss.vy; ss.life-=ss.decay; if(ss.life<=0){this.shootingStars.splice(i,1);return;} this.bgCtx.strokeStyle=`rgba(255,255,255,${ss.life})`; this.bgCtx.lineWidth=1.5; this.bgCtx.beginPath(); this.bgCtx.moveTo(ss.x,ss.y); this.bgCtx.lineTo(ss.x-ss.vx*ss.len/8,ss.y-ss.vy*ss.len/8); this.bgCtx.stroke(); });
+                    if(this.heartRainActive){ for(let i=0;i<2;i++) this.heartRainParticles.push({x:Math.random()*this.bgCanvas.width,y:-20,vy:1.5+Math.random()*3,vx:(Math.random()-0.5)*1.5,life:1,decay:0.003,size:14+Math.random()*16}); }
+                    this.heartRainParticles.forEach((hp,i)=>{ hp.y+=hp.vy; hp.x+=hp.vx; hp.life-=hp.decay; if(hp.life<=0||hp.y>this.bgCanvas.height+50){this.heartRainParticles.splice(i,1);return;} this.bgCtx.font=`${hp.size}px serif`; this.bgCtx.fillStyle=`rgba(255,130,170,${hp.life})`; this.bgCtx.fillText('❤️',hp.x,hp.y); });
+                    this.animFrameId = requestAnimationFrame(()=>this._animate());
+                },
+                _animateConfetti() {
+                    if (this.confettiParticles.length === 0) { this.confettiAnimId = requestAnimationFrame(()=>this._animateConfetti()); return; }
+                    this.confettiCtx.clearRect(0,0,this.confettiCanvas.width,this.confettiCanvas.height);
+                    this.confettiParticles.forEach((cp,i)=>{
+                        cp.x+=cp.vx; cp.y+=cp.vy; cp.vy+=0.12; cp.life-=cp.decay;
+                        if(cp.life<=0||cp.y>this.confettiCanvas.height+40){this.confettiParticles.splice(i,1);return;}
+                        this.confettiCtx.fillStyle=`rgba(${cp.r},${cp.g},${cp.b},${cp.life})`;
+                        this.confettiCtx.fillRect(cp.x,cp.y,cp.size,cp.size*1.6);
+                    });
+                    this.confettiAnimId = requestAnimationFrame(()=>this._animateConfetti());
+                },
+                spawnBurst(cx,cy,color,count) {
+                    const hexToRgb = (hex) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return {r,g,b}; };
+                    const rgb = hexToRgb(color);
+                    for(let i=0;i<count;i++){ const angle=Math.random()*Math.PI*2,speed=2+Math.random()*6; this.confettiParticles.push({x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,life:1,decay:0.02+Math.random()*0.04,size:4+Math.random()*8,r:rgb.r,g:rgb.g,b:rgb.b}); }
+                },
+                spawnConfetti() {
+                    const colors=['#fbbf24','#f472b6','#a855f7','#60a5fa','#34d399'];
+                    for(let i=0;i<80;i++){ const hex=colors[Math.floor(Math.random()*colors.length)]; const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); this.confettiParticles.push({x:Math.random()*this.confettiCanvas.width,y:-30-Math.random()*100,vx:(Math.random()-0.5)*8,vy:3+Math.random()*7,life:1,decay:0.006+Math.random()*0.015,size:5+Math.random()*10,r,g,b}); }
+                },
+                triggerFinalEffects() { this.spawnConfetti(); setTimeout(()=>this.spawnConfetti(),1500); },
+                triggerHeartRain() { this.heartRainActive = true; setTimeout(()=>{this.heartRainActive=false;},4000); }
+            };
+
+            // ==================== GAME LOGIC ====================
+            const GameLogic = {
+                heartGameActive: false, hearts: [], heartAnimFrame: null, heartSpawnTimer: null, heartsCollected: 0,
+                startHeartGame() {
+                    const area = document.getElementById('heartGameArea');
+                    area.innerHTML = '<div class="heart-counter" id="heartCounter">💖 0 / 15</div>';
+                    this.hearts = []; this.heartsCollected = 0; this.heartGameActive = true;
+                    document.getElementById('btnContinueHearts').style.display = 'none';
+                    this._spawnHeart(); this.heartSpawnTimer = setInterval(()=>this._spawnHeart(), 600);
+                    this._gameLoop();
+                },
+                _spawnHeart() {
+                    if(!this.heartGameActive||this.hearts.length>12) return;
+                    const area = document.getElementById('heartGameArea');
+                    const heart = document.createElement('span'); heart.className='falling-heart';
+                    heart.textContent = ['❤️','💖','💕','💗','💝'][Math.floor(Math.random()*5)];
+                    heart.style.left = (5+Math.random()*85)+'%'; heart.style.top = '-40px';
+                    heart.dataset.speed = (1.2+Math.random()*2.5).toString();
+                    heart.dataset.drift = ((Math.random()-0.5)*0.8).toString();
+                    heart.addEventListener('pointerdown', (e)=>this._collectHeart(e,heart));
+                    area.appendChild(heart);
+                    this.hearts.push({el:heart, y:-40, speed:parseFloat(heart.dataset.speed), drift:parseFloat(heart.dataset.drift)});
+                },
+                _collectHeart(e,heartEl) {
+                    if(heartEl.dataset.collected) return; heartEl.dataset.collected='true';
+                    SoundEngine.play('heart'); this.heartsCollected++;
+                    document.getElementById('heartCounter').textContent = `💖 ${this.heartsCollected} / 15`;
+                    const rect = heartEl.getBoundingClientRect();
+                    AnimationController.spawnBurst(rect.left+rect.width/2, rect.top+rect.height/2, '#f472b6', 10);
+                    heartEl.remove(); this.hearts = this.hearts.filter(h=>h.el!==heartEl);
+                    if(this.heartsCollected>=15) this._endHeartGame();
+                },
+                _gameLoop() {
+                    if(!this.heartGameActive) return;
+                    const area = document.getElementById('heartGameArea'), areaH = area.getBoundingClientRect().height;
+                    for(let i=this.hearts.length-1;i>=0;i--) {
+                        const h=this.hearts[i]; h.y+=h.speed; h.el.style.top=h.y+'px'; h.el.style.left=(parseFloat(h.el.style.left)+h.drift)+'%';
+                        if(h.y>areaH+50) { h.el.remove(); this.hearts.splice(i,1); }
+                    }
+                    this.heartAnimFrame = requestAnimationFrame(()=>this._gameLoop());
+                },
+                _endHeartGame() {
+                    this.heartGameActive=false; clearInterval(this.heartSpawnTimer); cancelAnimationFrame(this.heartAnimFrame);
+                    this.hearts.forEach(h=>h.el.remove()); this.hearts=[];
+                    document.getElementById('btnContinueHearts').style.display='inline-flex';
+                    SoundEngine.play('success'); AnimationController.spawnConfetti();
+                    UIRenderer._showToast('❤️','Ты собрала столько любви!');
+                },
+                spinWheel() {
+                    const wheel = document.getElementById('wheelSvg'), btn = document.getElementById('btnSpinWheel');
+                    if(btn.dataset.spinning) return; btn.dataset.spinning='true'; btn.style.pointerEvents='none';
+                    const segments = ['❤️ Обнимашка','🌙 Сладкий сон','✨ Желание','😊 Улыбка','💌 Секрет'];
+                    const targetIdx = Math.floor(Math.random()*5), totalAngle = (5+Math.random()*3)*360 + targetIdx*72 + 36;
+                    let startAngle = 0, startTime = performance.now(), duration = 4000;
+                    function animate(now) {
+                        const elapsed = now - startTime, progress = Math.min(elapsed/duration, 1);
+                        const easeOut = 1 - Math.pow(1-progress, 3);
+                        const currentAngle = easeOut * totalAngle;
+                        wheel.style.transform = `rotate(${currentAngle}deg)`;
+                        if(progress < 1) requestAnimationFrame(animate);
+                        else {
+                            SoundEngine.play('wheel-result');
+                            UIRenderer._showToast('🎡','Тебе выпало: '+segments[targetIdx]);
+                            document.getElementById('btnContinueWheel').style.display='inline-flex';
+                            btn.style.display='none'; btn.dataset.spinning='false';
+                        }
+                    }
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            // ==================== RIPPLE EFFECT ====================
+            function createRipple(e) {
+                const btn = e.currentTarget;
+                const rect = btn.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size/2;
+                const y = e.clientY - rect.top - size/2;
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                ripple.style.width = ripple.style.height = size+'px';
+                ripple.style.left = x+'px'; ripple.style.top = y+'px';
+                btn.appendChild(ripple);
+                ripple.addEventListener('animationend', ()=>ripple.remove());
+            }
+
+            // ==================== INITIALIZATION ====================
+            function initApp() {
+                SoundEngine.init();
+                AnimationController.init();
+                document.getElementById('splash').classList.add('hidden');
+                setTimeout(()=>{ const s = document.getElementById('splash'); if(s) s.style.display='none'; }, 900);
+
+                const musicToggle = document.getElementById('musicToggle');
+                musicToggle.addEventListener('click', ()=>{
+                    StateManager.data.musicOn = !StateManager.data.musicOn;
+                    musicToggle.textContent = StateManager.data.musicOn ? '🔊' : '🔇';
+                    if(StateManager.data.musicOn) { SoundEngine.startLullaby(); if(SoundEngine.ctx?.state==='suspended') SoundEngine.ctx.resume(); }
+                    else SoundEngine.stopLullaby();
+                });
+
+                document.querySelectorAll('.btn, .mood-btn').forEach(b => b.addEventListener('pointerdown', createRipple));
+
+                document.getElementById('app').addEventListener('click', (e)=>{
+                    const btn = e.target.closest('[data-action]');
+                    if(!btn) return;
+                    SoundEngine.play('click');
+                    const action = btn.dataset.action;
+                    switch(action) {
+                        case 'go-mood': StateManager.goTo('mood'); break;
+                        case 'go-hearts': StateManager.goTo('hearts-game'); break;
+                        case 'go-wheel': StateManager.goTo('wheel'); break;
+                        case 'spin-wheel': GameLogic.spinWheel(); break;
+                        case 'go-postcard': StateManager.goTo('postcard'); break;
+                        case 'go-quest': StateManager.goTo('quest'); break;
+                        case 'go-magic': StateManager.goTo('magic-button'); break;
+                        case 'magic-press': UIRenderer.showMagicPhrase(); SoundEngine.play('magic'); break;
+                        case 'go-final': StateManager.goTo('final'); break;
+                        case 'restart': StateManager.goTo('intro'); break;
+                        case 'share':
+                            const phrase = CONFIG.magicPhrases[Math.floor(Math.random()*CONFIG.magicPhrases.length)];
+                            navigator.clipboard?.writeText(phrase+' 🌙 Спокойной ночи!').then(()=>UIRenderer._showToast('💌','Тёплая фраза скопирована!'));
+                            break;
+                    }
+                });
+
+                document.querySelectorAll('.mood-btn').forEach(btn=>{
+                    btn.addEventListener('click', ()=>{
+                        const mood = btn.dataset.mood;
+                        StateManager.data.mood = mood;
+                        const responses = { happy:'Пусть радость продолжается и во сне! 😊', dreamy:'Мечты сбываются, особенно ночью... ✨', sleepy:'Сон уже совсем рядом... 😴', sad:'Ночь всё обнимет и согреет... Всё пройдёт 🌙' };
+                        UIRenderer._showToast('💭', responses[mood]||'');
+                        setTimeout(()=>StateManager.goTo('stars'), 1500);
+                    });
+                });
+
+                document.getElementById('bgCanvas').addEventListener('click', (e)=>{
+                    const moonX = window.innerWidth*0.78, moonY = window.innerHeight*0.18, moonR = Math.min(window.innerWidth,window.innerHeight)*0.09;
+                    if(Math.hypot(e.clientX-moonX, e.clientY-moonY) < moonR*1.5) {
+                        UIRenderer._showToast('🌙','Луна шепчет: "Ты в безопасности, всё хорошо..."');
+                        SoundEngine.play('star');
+                        AnimationController.spawnBurst(moonX, moonY, '#fcd34d', 20);
+                    }
+                });
+
+                let holdTimer;
+                document.addEventListener('pointerdown', (e)=>{
+                    const moonX = window.innerWidth*0.78, moonY = window.innerHeight*0.18, moonR = Math.min(window.innerWidth,window.innerHeight)*0.09;
+                    if(Math.hypot(e.clientX-moonX, e.clientY-moonY) < moonR*1.5) {
+                        holdTimer = setTimeout(()=>{ AnimationController.triggerHeartRain(); SoundEngine.play('success'); }, 1500);
+                    }
+                });
+                document.addEventListener('pointerup', ()=>clearTimeout(holdTimer));
+
+                // Swipe navigation (left/right)
+                let touchStartX=0;
+                document.addEventListener('touchstart', (e)=>touchStartX=e.touches[0].clientX);
+                document.addEventListener('touchend', (e)=>{
+                    const diff = e.changedTouches[0].clientX - touchStartX;
+                    if(Math.abs(diff) < 50) return;
+                    const dir = diff > 0 ? 'back' : 'forward';
+                    const current = StateManager.current;
+                    const map = {
+                        mood: {back:'intro', forward:'stars'},
+                        stars: {back:'mood', forward:'hearts-game'},
+                        'hearts-game': {back:'stars', forward:'wheel'},
+                        wheel: {back:'hearts-game', forward:'postcard'},
+                        postcard: {back:'wheel', forward:'quest'},
+                        quest: {back:'postcard', forward:'magic-button'},
+                        'magic-button': {back:'quest', forward:'final'},
+                        final: {back:'magic-button', forward:'intro'}
+                    };
+                    const target = map[current]?.[dir];
+                    if(target) StateManager.goTo(target, dir==='forward'?'forward':'back');
+                });
+
+                // Final dimming after 60s
+                let finalTimeout;
+                const resetFinalDim = ()=>{
+                    clearTimeout(finalTimeout);
+                    document.getElementById('finalDimOverlay').classList.remove('active');
+                    if(StateManager.current==='final') finalTimeout = setTimeout(()=>document.getElementById('finalDimOverlay').classList.add('active'), 60000);
+                };
+                document.addEventListener('click', resetFinalDim);
+                document.addEventListener('touchstart', resetFinalDim);
+                StateManager.updateProgress();
+            }
+
+            document.addEventListener('DOMContentLoaded', initApp);
+            if (new URLSearchParams(window.location.search).get('debug') === '1') {
+                const orig = StateManager.goTo;
+                StateManager.goTo = function(...args) { console.log('State transition:', args); return orig.apply(this, args); };
+            }
+        })();
+    </script>
+</body>
+</html>
